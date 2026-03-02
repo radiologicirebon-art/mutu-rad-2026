@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Audit Radiologi PRO 2 - 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+font-family:Segoe UI,Arial;
+background:#eef2f7;
+margin:0;
+}
+header{
+background:#0B3D91;
+color:white;
+padding:15px;
+text-align:center;
+font-size:18px;
+font-weight:bold;
+}
+.container{
+padding:15px;
+max-width:1100px;
+margin:auto;
+}
+.card{
+background:white;
+padding:15px;
+border-radius:12px;
+margin-bottom:15px;
+box-shadow:0 2px 8px rgba(0,0,0,0.08);
+}
+button{
+background:#0B3D91;
+color:white;
+border:none;
+padding:8px 12px;
+border-radius:6px;
+cursor:pointer;
+margin-top:5px;
+width:100%;
+}
+button:hover{opacity:0.85}
+input{
+width:100%;
+padding:8px;
+margin-bottom:10px;
+border:1px solid #ccc;
+border-radius:6px;
+}
+.hidden{display:none}
+.warning{
+background:#ffe5e5;
+padding:10px;
+border-left:4px solid red;
+margin-bottom:10px;
+}
+.success{
+background:#e6ffe6;
+padding:10px;
+border-left:4px solid green;
+margin-bottom:10px;
+}
+canvas{max-height:300px}
+@media(min-width:768px){
+button{width:auto}
+}
+</style>
+</head>
+<body>
+
+<header>
+SISTEM AUDIT MUTU RADIOLOGI PRO 2 - 2026
+</header>
+
+<div class="container">
+
+<!-- LOGIN -->
+<div id="loginPage" class="card">
+<h3>Login</h3>
+<input type="text" id="username" placeholder="Username">
+<input type="password" id="password" placeholder="Password">
+<button onclick="login()">Login</button>
+<p id="loginMsg"></p>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="hidden">
+
+<div id="reminder"></div>
+
+<div class="card">
+<h3>Menu Audit</h3>
+<button onclick="showForm('hand')">Hand Hygiene</button>
+<button onclick="showForm('identifikasi')">Identifikasi Pasien</button>
+<button onclick="showForm('apd')">Penggunaan APD</button>
+<button onclick="showForm('thorax')">Mutu Thorax Foto</button>
+</div>
+
+<!-- FORM AREA -->
+<div id="formArea"></div>
+
+<!-- HASIL -->
+<div id="hasil" class="card hidden">
+<h3>Hasil Audit</h3>
+<div id="isiHasil"></div>
+<button onclick="window.print()">Cetak</button>
+</div>
+
+<!-- GRAFIK -->
+<div class="card">
+<h3>Grafik Capaian Indikator (Target 100%)</h3>
+<canvas id="grafikAudit"></canvas>
+</div>
+
+</div>
+</div>
+
+<script>
+const firebaseConfig = {
+databaseURL: "https://audit-radiologi-2026-default-rtdb.asia-southeast1.firebasedatabase.app/"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let chart;
+
+function login(){
+if(username.value=="201708073" && password.value=="Papamama00"){
+loginPage.classList.add("hidden");
+dashboard.classList.remove("hidden");
+cekReminder();
+loadGrafik();
+}else{
+loginMsg.innerHTML="Login gagal!";
+}
+}
+
+function showForm(jenis){
+let formHTML=`
+<div class="card">
+<h3>Input Audit ${jenis.toUpperCase()}</h3>
+<input type="text" id="nama" placeholder="Nama Petugas">
+<input type="date" id="tanggal">
+<input type="number" id="sampel" placeholder="Jumlah Sampel">
+<input type="number" id="sesuai" placeholder="Jumlah Sesuai">
+<button onclick="simpan('${jenis}')">Simpan & Verifikasi</button>
+<button onclick="lihat('${jenis}')">Lihat Hasil</button>
+</div>`;
+formArea.innerHTML=formHTML;
+}
+
+function simpan(jenis){
+let nama=document.getElementById("nama").value;
+let tanggal=document.getElementById("tanggal").value;
+let sampel=parseInt(document.getElementById("sampel").value);
+let sesuai=parseInt(document.getElementById("sesuai").value);
+
+if(!nama||!tanggal||!sampel||!sesuai){
+alert("Lengkapi data terlebih dahulu!");
+return;
+}
+
+let persen=((sesuai/sampel)*100).toFixed(2);
+
+db.ref("audit/"+jenis).push({
+nama:nama,
+tanggal:tanggal,
+sampel:sampel,
+sesuai:sesuai,
+persentase:persen,
+verifikator:"Ino Hadiwinata, A.Md.Rad",
+jabatan:"Koordinator Radiologi",
+timestamp:Date.now()
+});
+
+alert("Audit berhasil disimpan & diverifikasi");
+cekReminder();
+loadGrafik();
+}
+
+function lihat(jenis){
+hasil.classList.remove("hidden");
+db.ref("audit/"+jenis).once("value",snap=>{
+let data=snap.val();
+let html="";
+for(let key in data){
+html+=`
+<div class="card">
+Tanggal: ${data[key].tanggal}<br>
+Petugas: ${data[key].nama}<br>
+Persentase: ${data[key].persentase}%<br>
+Verifikator: ${data[key].verifikator}
+</div>`;
+}
+isiHasil.innerHTML=html;
+});
+}
+
+function cekReminder(){
+let today=new Date().toISOString().split("T")[0];
+let jenisList=["hand","identifikasi","apd","thorax"];
+let pesan="";
+let count=0;
+
+jenisList.forEach(jenis=>{
+db.ref("audit/"+jenis).orderByChild("tanggal").equalTo(today).once("value",snap=>{
+if(!snap.exists()){
+pesan+=`<div class='warning'>⚠ Belum audit ${jenis.toUpperCase()} hari ini</div>`;
+}else{
+count++;
+}
+reminder.innerHTML=pesan;
+});
+});
+}
+
+function loadGrafik(){
+let jenisList=["hand","identifikasi","apd","thorax"];
+let labels=["Hand Hygiene","Identifikasi","APD","Thorax"];
+let dataPersen=[];
+
+let promises=jenisList.map(jenis=>{
+return db.ref("audit/"+jenis).limitToLast(1).once("value").then(snap=>{
+if(snap.exists()){
+let val=Object.values(snap.val())[0];
+dataPersen.push(parseFloat(val.persentase));
+}else{
+dataPersen.push(0);
+}
+});
+});
+
+Promise.all(promises).then(()=>{
+let warna=dataPersen.map(p=>p<100?"red":"green");
+if(chart) chart.destroy();
+chart=new Chart(document.getElementById("grafikAudit"),{
+type:"bar",
+data:{
+labels:labels,
+datasets:[{
+label:"Capaian (%)",
+data:dataPersen,
+backgroundColor:warna
+}]
+},
+options:{
+responsive:true,
+scales:{
+y:{beginAtZero:true,max:100}
+}
+}
+});
+});
+}
+</script>
+
+</body>
+</html>
