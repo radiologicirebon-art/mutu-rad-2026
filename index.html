@@ -208,7 +208,7 @@ list+=`
 <b>${jenis.key}</b><br>
 ${d.nama} - ${d.tanggal}<br>
 ${indikator(parseFloat(d.persentase))}<br>
-<button onclick="window.print()">Cetak</button>
+<button onclick='cetakAudit(${JSON.stringify(d)})'>Cetak</button>
 </div>`;
 });
 });
