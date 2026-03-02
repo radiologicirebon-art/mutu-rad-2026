@@ -2,259 +2,223 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Audit Radiologi PRO 2 - 2026</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit Mutu Radiologi PRO 2.1</title>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body{
-font-family:Segoe UI,Arial;
-background:#eef2f7;
-margin:0;
+body{margin:0;font-family:Arial;background:#f4f6f9}
+.sidebar{
+position:fixed;width:230px;height:100%;background:#1e293b;color:white;padding:20px;
 }
-header{
-background:#0B3D91;
-color:white;
-padding:15px;
-text-align:center;
-font-size:18px;
-font-weight:bold;
+.sidebar h2{color:#38bdf8}
+.sidebar button{
+width:100%;margin:5px 0;padding:10px;border:none;border-radius:8px;
+background:#334155;color:white;cursor:pointer;transition:0.3s;
 }
-.container{
-padding:15px;
-max-width:1100px;
-margin:auto;
-}
+.sidebar button:hover{background:#0ea5e9}
+.content{margin-left:250px;padding:20px}
 .card{
-background:white;
-padding:15px;
-border-radius:12px;
-margin-bottom:15px;
-box-shadow:0 2px 8px rgba(0,0,0,0.08);
+background:white;padding:20px;border-radius:15px;
+box-shadow:0 4px 10px rgba(0,0,0,0.1);margin-bottom:20px;
 }
-button{
-background:#0B3D91;
-color:white;
-border:none;
-padding:8px 12px;
-border-radius:6px;
-cursor:pointer;
-margin-top:5px;
-width:100%;
+input,textarea{
+width:100%;padding:8px;margin:5px 0 10px;border-radius:8px;border:1px solid #ccc;
 }
-button:hover{opacity:0.85}
-input{
-width:100%;
-padding:8px;
-margin-bottom:10px;
-border:1px solid #ccc;
-border-radius:6px;
+textarea{height:60px}
+button.save{
+background:#0ea5e9;color:white;border:none;padding:10px;border-radius:8px;cursor:pointer
+}
+.status-green{background:#22c55e;color:white;padding:5px 10px;border-radius:20px}
+.status-yellow{background:#facc15;color:black;padding:5px 10px;border-radius:20px}
+.status-red{background:#ef4444;color:white;padding:5px 10px;border-radius:20px}
+.login-box{
+width:300px;margin:100px auto;background:white;padding:30px;
+border-radius:15px;box-shadow:0 4px 10px rgba(0,0,0,0.1);
 }
 .hidden{display:none}
-.warning{
-background:#ffe5e5;
-padding:10px;
-border-left:4px solid red;
-margin-bottom:10px;
-}
-.success{
-background:#e6ffe6;
-padding:10px;
-border-left:4px solid green;
-margin-bottom:10px;
-}
-canvas{max-height:300px}
-@media(min-width:768px){
-button{width:auto}
-}
 </style>
 </head>
+
 <body>
 
-<header>
-SISTEM AUDIT MUTU RADIOLOGI PRO 2 - 2026
-</header>
-
-<div class="container">
-
-<!-- LOGIN -->
-<div id="loginPage" class="card">
-<h3>Login</h3>
+<div id="loginPage" class="login-box">
+<h2>Login Audit Radiologi</h2>
 <input type="text" id="username" placeholder="Username">
 <input type="password" id="password" placeholder="Password">
-<button onclick="login()">Login</button>
-<p id="loginMsg"></p>
+<button class="save" onclick="login()">Login</button>
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashboard" class="hidden">
-
-<div id="reminder"></div>
-
-<div class="card">
-<h3>Menu Audit</h3>
+<div id="app" class="hidden">
+<div class="sidebar">
+<h2>Audit Radiologi</h2>
+<button onclick="showDashboard()">Dashboard</button>
 <button onclick="showForm('hand')">Hand Hygiene</button>
 <button onclick="showForm('identifikasi')">Identifikasi Pasien</button>
-<button onclick="showForm('apd')">Penggunaan APD</button>
-<button onclick="showForm('thorax')">Mutu Thorax Foto</button>
+<button onclick="showForm('apd')">APD Radiologi</button>
+<button onclick="showForm('thorax')">Mutu Thorax</button>
 </div>
 
-<!-- FORM AREA -->
-<div id="formArea"></div>
-
-<!-- HASIL -->
-<div id="hasil" class="card hidden">
-<h3>Hasil Audit</h3>
-<div id="isiHasil"></div>
-<button onclick="window.print()">Cetak</button>
-</div>
-
-<!-- GRAFIK -->
-<div class="card">
-<h3>Grafik Capaian Indikator (Target 100%)</h3>
-<canvas id="grafikAudit"></canvas>
-</div>
-
+<div class="content">
+<div id="mainContent"></div>
 </div>
 </div>
 
 <script>
-const firebaseConfig = {
+var firebaseConfig = {
 databaseURL: "https://audit-radiologi-2026-default-rtdb.asia-southeast1.firebasedatabase.app/"
 };
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-let chart;
+var db = firebase.database();
 
 function login(){
 if(username.value=="201708073" && password.value=="Papamama00"){
 loginPage.classList.add("hidden");
-dashboard.classList.remove("hidden");
-cekReminder();
-loadGrafik();
-}else{
-loginMsg.innerHTML="Login gagal!";
+app.classList.remove("hidden");
+showDashboard();
+}else{alert("Login salah");}
 }
+
+function indikator(p){
+if(p>=95)return '<span class="status-green">'+p+'%</span>';
+if(p>=85)return '<span class="status-yellow">'+p+'%</span>';
+return '<span class="status-red">'+p+'%</span>';
+}
+
+function showDashboard(){
+let html=`<div class="card">
+<h2>Dashboard Audit</h2>
+<div id="reminder"></div>
+<canvas id="chart"></canvas>
+</div>
+<div class="card">
+<h3>Data Audit</h3>
+<div id="dataList"></div>
+</div>`;
+mainContent.innerHTML=html;
+loadData();
 }
 
 function showForm(jenis){
-let formHTML=`
+let checklist="";
+if(jenis=="hand"){
+checklist=`
+<label><input type="checkbox" class="chk"> Sebelum kontak pasien</label><br>
+<label><input type="checkbox" class="chk"> Sebelum tindakan aseptik</label><br>
+<label><input type="checkbox" class="chk"> Setelah terpapar cairan tubuh</label><br>
+<label><input type="checkbox" class="chk"> Setelah kontak pasien</label><br>
+<label><input type="checkbox" class="chk"> Setelah kontak lingkungan pasien</label><br>`;
+}
+if(jenis=="identifikasi"){
+checklist=`
+<label><input type="checkbox" class="chk"> Konfirmasi Nama</label><br>
+<label><input type="checkbox" class="chk"> Konfirmasi Tgl Lahir</label><br>
+<label><input type="checkbox" class="chk"> Cocok Gelang</label><br>
+<label><input type="checkbox" class="chk"> Cocok Permintaan</label><br>`;
+}
+if(jenis=="apd"){
+checklist=`
+<label><input type="checkbox" class="chk"> Apron Pb</label><br>
+<label><input type="checkbox" class="chk"> Masker</label><br>
+<label><input type="checkbox" class="chk"> Sarung Tangan</label><br>
+<label><input type="checkbox" class="chk"> Dosimeter</label><br>
+<label><input type="checkbox" class="chk"> Shield Tiroid</label><br>`;
+}
+if(jenis=="thorax"){
+checklist=`
+<label><input type="checkbox" class="chk"> Inspirasi cukup</label><br>
+<label><input type="checkbox" class="chk"> Tidak rotasi</label><br>
+<label><input type="checkbox" class="chk"> Scapula keluar</label><br>
+<label><input type="checkbox" class="chk"> Exposure optimal</label><br>
+<label><input type="checkbox" class="chk"> Marker benar</label><br>`;
+}
+
+mainContent.innerHTML=`
 <div class="card">
-<h3>Input Audit ${jenis.toUpperCase()}</h3>
-<input type="text" id="nama" placeholder="Nama Petugas">
+<h2>Form Audit</h2>
+<label>Nama Auditor</label>
+<input type="text" id="nama">
+<label>Unit</label>
+<input type="text" id="unit">
+<label>Tanggal</label>
 <input type="date" id="tanggal">
-<input type="number" id="sampel" placeholder="Jumlah Sampel">
-<input type="number" id="sesuai" placeholder="Jumlah Sesuai">
-<button onclick="simpan('${jenis}')">Simpan & Verifikasi</button>
-<button onclick="lihat('${jenis}')">Lihat Hasil</button>
+<h4>Checklist</h4>
+${checklist}
+<label>Temuan</label>
+<textarea id="temuan"></textarea>
+<label>Tindak Lanjut</label>
+<textarea id="tindak"></textarea>
+<label>Target Penyelesaian</label>
+<input type="date" id="target">
+<button class="save" onclick="simpanAudit('${jenis}')">Simpan & Verifikasi</button>
 </div>`;
-formArea.innerHTML=formHTML;
 }
 
-function simpan(jenis){
+function simpanAudit(jenis){
 let nama=document.getElementById("nama").value;
+let unit=document.getElementById("unit").value;
 let tanggal=document.getElementById("tanggal").value;
-let sampel=parseInt(document.getElementById("sampel").value);
-let sesuai=parseInt(document.getElementById("sesuai").value);
+let temuan=document.getElementById("temuan").value;
+let tindak=document.getElementById("tindak").value;
+let target=document.getElementById("target").value;
 
-if(!nama||!tanggal||!sampel||!sesuai){
-alert("Lengkapi data terlebih dahulu!");
-return;
-}
-
-let persen=((sesuai/sampel)*100).toFixed(2);
+let chk=document.querySelectorAll(".chk");
+let total=chk.length;
+let patuh=0;
+chk.forEach(c=>{if(c.checked)patuh++;});
+let persen=((patuh/total)*100).toFixed(2);
 
 db.ref("audit/"+jenis).push({
 nama:nama,
+unit:unit,
 tanggal:tanggal,
-sampel:sampel,
-sesuai:sesuai,
+total:total,
+patuh:patuh,
 persentase:persen,
+temuan:temuan,
+tindak_lanjut:tindak,
+target:target,
+status:"Tervalidasi",
 verifikator:"Ino Hadiwinata, A.Md.Rad",
-jabatan:"Koordinator Radiologi",
 timestamp:Date.now()
 });
 
-alert("Audit berhasil disimpan & diverifikasi");
-cekReminder();
-loadGrafik();
+alert("Audit tersimpan");
+showDashboard();
 }
 
-function lihat(jenis){
-hasil.classList.remove("hidden");
-db.ref("audit/"+jenis).once("value",snap=>{
-let data=snap.val();
-let html="";
-for(let key in data){
-html+=`
-<div class="card">
-Tanggal: ${data[key].tanggal}<br>
-Petugas: ${data[key].nama}<br>
-Persentase: ${data[key].persentase}%<br>
-Verifikator: ${data[key].verifikator}
-</div>`;
-}
-isiHasil.innerHTML=html;
-});
-}
-
-function cekReminder(){
-let today=new Date().toISOString().split("T")[0];
-let jenisList=["hand","identifikasi","apd","thorax"];
-let pesan="";
-let count=0;
-
-jenisList.forEach(jenis=>{
-db.ref("audit/"+jenis).orderByChild("tanggal").equalTo(today).once("value",snap=>{
-if(!snap.exists()){
-pesan+=`<div class='warning'>⚠ Belum audit ${jenis.toUpperCase()} hari ini</div>`;
-}else{
-count++;
-}
-reminder.innerHTML=pesan;
-});
-});
-}
-
-function loadGrafik(){
-let jenisList=["hand","identifikasi","apd","thorax"];
-let labels=["Hand Hygiene","Identifikasi","APD","Thorax"];
+function loadData(){
+let list="";
 let dataPersen=[];
+let dataLabel=[];
+let today=new Date().toISOString().split("T")[0];
+let adaHariIni=false;
 
-let promises=jenisList.map(jenis=>{
-return db.ref("audit/"+jenis).limitToLast(1).once("value").then(snap=>{
-if(snap.exists()){
-let val=Object.values(snap.val())[0];
-dataPersen.push(parseFloat(val.persentase));
-}else{
-dataPersen.push(0);
-}
+db.ref("audit").once("value",snap=>{
+snap.forEach(jenis=>{
+jenis.forEach(item=>{
+let d=item.val();
+if(d.tanggal==today)adaHariIni=true;
+dataPersen.push(d.persentase);
+dataLabel.push(d.tanggal);
+list+=`
+<div class="card">
+<b>${jenis.key}</b><br>
+${d.nama} - ${d.tanggal}<br>
+${indikator(parseFloat(d.persentase))}<br>
+<button onclick="window.print()">Cetak</button>
+</div>`;
 });
 });
-
-Promise.all(promises).then(()=>{
-let warna=dataPersen.map(p=>p<100?"red":"green");
-if(chart) chart.destroy();
-chart=new Chart(document.getElementById("grafikAudit"),{
-type:"bar",
-data:{
-labels:labels,
-datasets:[{
-label:"Capaian (%)",
-data:dataPersen,
-backgroundColor:warna
-}]
-},
-options:{
-responsive:true,
-scales:{
-y:{beginAtZero:true,max:100}
+dataList.innerHTML=list;
+if(!adaHariIni){
+reminder.innerHTML="<h3 style='color:red'>⚠ Belum ada audit hari ini</h3>";
 }
-}
+new Chart(document.getElementById("chart"),{
+type:"line",
+data:{labels:dataLabel,datasets:[{label:"Persentase Audit",data:dataPersen}]}
 });
 });
 }
