@@ -99,6 +99,76 @@ let html=`<div class="card">
 </div>`;
 mainContent.innerHTML=html;
 loadData();
+  function cetakAudit(data){
+let win=window.open("","","width=800,height=600");
+
+win.document.write(`
+<html>
+<head>
+<title>Cetak Audit</title>
+<style>
+body{font-family:Arial;padding:30px}
+h2{text-align:center}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+td{padding:8px;border:1px solid #000}
+.section{margin-top:20px}
+</style>
+</head>
+<body>
+
+<h2>LEMBAR AUDIT MUTU RADIOLOGI</h2>
+
+<table>
+<tr><td>Nama Auditor</td><td>${data.nama}</td></tr>
+<tr><td>Unit</td><td>${data.unit}</td></tr>
+<tr><td>Tanggal</td><td>${data.tanggal}</td></tr>
+<tr><td>Total Observasi</td><td>${data.total}</td></tr>
+<tr><td>Patuh</td><td>${data.patuh}</td></tr>
+<tr><td>Persentase</td><td>${data.persentase}%</td></tr>
+<tr><td>Status</td><td>${data.status}</td></tr>
+<tr><td>Verifikator</td><td>${data.verifikator}</td></tr>
+</table>
+
+<div class="section">
+<h4>Temuan</h4>
+<p>${data.temuan || "-"}</p>
+</div>
+
+<div class="section">
+<h4>Tindak Lanjut</h4>
+<p>${data.tindak_lanjut || "-"}</p>
+</div>
+
+<div class="section">
+<h4>Target Penyelesaian</h4>
+<p>${data.target || "-"}</p>
+</div>
+
+<br><br><br>
+<table style="border:none">
+<tr style="border:none">
+<td style="border:none;text-align:center">
+Auditor<br><br><br>
+( ${data.nama} )
+</td>
+<td style="border:none;text-align:center">
+Koordinator Radiologi<br><br><br>
+( ${data.verifikator} )
+</td>
+</tr>
+</table>
+
+<script>
+window.print();
+window.close();
+<\/script>
+
+</body>
+</html>
+`);
+
+win.document.close();
+}
 }
 
 function showForm(jenis){
