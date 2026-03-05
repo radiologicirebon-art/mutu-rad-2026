@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Audit Mutu Radiologi PRO 2.3</title>
+<title>Audit Mutu Radiologi PRO 2.4</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -20,7 +20,7 @@ background:#334155;color:white;cursor:pointer;transition:0.3s}
 .card{
 background:white;padding:20px;border-radius:15px;
 box-shadow:0 4px 10px rgba(0,0,0,0.1);margin-bottom:20px}
-input,textarea{
+input,textarea,select{
 width:100%;padding:8px;margin:5px 0 10px;border-radius:8px;border:1px solid #ccc}
 textarea{height:60px}
 button.save{
@@ -45,6 +45,7 @@ border-radius:15px;box-shadow:0 4px 10px rgba(0,0,0,0.1)}
 </div>
 
 <div id="app" class="hidden">
+
 <div class="sidebar">
 <h2>Audit Radiologi</h2>
 <button onclick="showDashboard()">Dashboard</button>
@@ -57,12 +58,15 @@ border-radius:15px;box-shadow:0 4px 10px rgba(0,0,0,0.1)}
 <div class="content">
 <div id="mainContent"></div>
 </div>
+
 </div>
 
 <script>
+
 var firebaseConfig={
 databaseURL:"https://audit-radiologi-2026-default-rtdb.asia-southeast1.firebasedatabase.app/"
 };
+
 firebase.initializeApp(firebaseConfig);
 var db=firebase.database();
 var chartInstance=null;
@@ -88,19 +92,37 @@ return '<span class="status-red">'+p+'%</span>';
 
 function showDashboard(){
 document.getElementById("mainContent").innerHTML=`
+
 <div class="card">
 <h2>Dashboard Audit</h2>
+
+<label>Filter Radiografer</label>
+<select id="filterRadiografer" onchange="loadData()">
+<option value="">-- Semua Radiografer --</option>
+</select>
+
 <div id="reminder"></div>
+
 <canvas id="chart"></canvas>
 </div>
+
+<div class="card">
+<h3>Ranking Kepatuhan Radiografer</h3>
+<div id="rankingList"></div>
+</div>
+
 <div class="card">
 <h3>Data Audit</h3>
 <div id="dataList"></div>
-</div>`;
+</div>
+
+`;
+
 loadData();
 }
 
 function showForm(jenis){
+
 let checklist="";
 
 if(jenis==="hand"){
@@ -139,13 +161,15 @@ checklist=`
 }
 
 document.getElementById("mainContent").innerHTML=`
+
 <div class="card">
+
 <h2>Form Audit</h2>
 
-<label>Nama Auditor (Petugas Audit)</label>
+<label>Nama Auditor</label>
 <input type="text" id="nama">
 
-<label>Nama Radiografer yang Diaudit (Pelaksana)</label>
+<label>Radiografer yang Diaudit</label>
 <input type="text" id="radiografer">
 
 <label>Unit</label>
@@ -155,6 +179,7 @@ document.getElementById("mainContent").innerHTML=`
 <input type="date" id="tanggal">
 
 <h4>Checklist</h4>
+
 ${checklist}
 
 <label>Temuan</label>
@@ -167,10 +192,14 @@ ${checklist}
 <input type="date" id="target">
 
 <button class="save" onclick="simpanAudit('${jenis}')">Simpan & Verifikasi</button>
-</div>`;
+
+</div>
+
+`;
 }
 
 function simpanAudit(jenis){
+
 let nama=document.getElementById("nama").value;
 let radiografer=document.getElementById("radiografer").value;
 let unit=document.getElementById("unit").value;
@@ -180,12 +209,16 @@ let tindak=document.getElementById("tindak").value;
 let target=document.getElementById("target").value;
 
 let chk=document.querySelectorAll(".chk");
+
 let total=chk.length;
 let patuh=0;
+
 chk.forEach(c=>{if(c.checked)patuh++;});
+
 let persen=((patuh/total)*100).toFixed(2);
 
 db.ref("audit/"+jenis).push({
+
 nama,
 radiografer,
 unit,
@@ -199,119 +232,278 @@ target,
 status:"Tervalidasi",
 verifikator:"Ino Hadiwinata, A.Md.Rad",
 timestamp:Date.now()
+
 });
 
 alert("Audit tersimpan");
+
 showDashboard();
 }
 
 function loadData(){
+
 let list="";
 let dataPersen=[];
 let dataLabel=[];
+let ranking={};
+
 let today=new Date().toISOString().split("T")[0];
+
 let adaHariIni=false;
 
+let filter=document.getElementById("filterRadiografer")?.value || "";
+
 db.ref("audit").once("value",snap=>{
+
 if(!snap.exists()){
 document.getElementById("dataList").innerHTML="Belum ada data audit.";
 return;
 }
 
+let radiograferSet=new Set();
+
 snap.forEach(jenis=>{
+
 jenis.forEach(item=>{
+
 let d=item.val();
-if(d.tanggal===today)adaHariIni=true;
+
+radiograferSet.add(d.radiografer || "-");
+
+if(filter && d.radiografer!==filter) return;
+
+if(d.tanggal===today) adaHariIni=true;
+
 dataPersen.push(parseFloat(d.persentase));
+
 dataLabel.push(d.tanggal);
+
+if(!ranking[d.radiografer]){
+ranking[d.radiografer]={total:0,jumlah:0};
+}
+
+ranking[d.radiografer].total+=parseFloat(d.persentase);
+
+ranking[d.radiografer].jumlah++;
 
 let encoded=encodeURIComponent(JSON.stringify(d));
 
 list+=`
+
 <div class="card">
+
 <b>${jenis.key.toUpperCase()}</b><br>
+
 👤 Auditor : ${d.nama}<br>
+
 🎯 Radiografer : <b>${d.radiografer || "-"}</b><br>
+
 📅 Tanggal : ${d.tanggal}<br>
-${indikator(parseFloat(d.persentase))}<br>
+
+${indikator(parseFloat(d.persentase))}
+
+<br>
+
 <button onclick="cetakAudit('${encoded}')">Cetak</button>
-</div>`;
+
+</div>
+
+`;
+
 });
+
 });
+
+let select=document.getElementById("filterRadiografer");
+
+if(select){
+
+select.innerHTML='<option value="">-- Semua Radiografer --</option>';
+
+radiograferSet.forEach(r=>{
+
+select.innerHTML+=`<option value="${r}">${r}</option>`;
+
+});
+
+}
+
+if(!adaHariIni){
+
+document.getElementById("reminder").innerHTML=
+
+"<h3 style='color:red'>⚠ Belum ada audit hari ini</h3>";
+
+}
 
 document.getElementById("dataList").innerHTML=list;
 
-if(!adaHariIni){
-document.getElementById("reminder").innerHTML=
-"<h3 style='color:red'>⚠ Belum ada audit hari ini</h3>";
+if(chartInstance){chartInstance.destroy();}
+
+chartInstance=new Chart(document.getElementById("chart"),{
+
+type:"line",
+
+data:{
+
+labels:dataLabel,
+
+datasets:[{
+
+label:"Persentase Audit",
+
+data:dataPersen,
+
+tension:0.3
+
+}]
+
 }
 
-if(chartInstance){chartInstance.destroy();}
-chartInstance=new Chart(document.getElementById("chart"),{
-type:"line",
-data:{
-labels:dataLabel,
-datasets:[{label:"Persentase Audit",data:dataPersen}]
+});
+
+let rankingArray=[];
+
+for(let r in ranking){
+
+let rata=(ranking[r].total/ranking[r].jumlah).toFixed(2);
+
+rankingArray.push({nama:r,rata:parseFloat(rata)});
+
 }
+
+rankingArray.sort((a,b)=>b.rata-a.rata);
+
+let rankingHTML="";
+
+rankingArray.forEach((r,i)=>{
+
+let medal="";
+
+if(i===0) medal="🥇";
+
+else if(i===1) medal="🥈";
+
+else if(i===2) medal="🥉";
+
+rankingHTML+=`
+
+<div class="card">
+
+${medal} <b>${r.nama}</b><br>
+
+Rata-rata Kepatuhan : ${indikator(r.rata)}
+
+</div>
+
+`;
+
 });
+
+document.getElementById("rankingList").innerHTML=rankingHTML;
+
 });
+
 }
 
 function cetakAudit(encodedData){
+
 let data=JSON.parse(decodeURIComponent(encodedData));
 
 let win=window.open("","","width=800,height=600");
+
 win.document.write(`
+
 <html>
+
 <head>
+
 <title>Cetak Audit</title>
+
 <style>
+
 body{font-family:Arial;padding:30px}
+
 h2{text-align:center}
+
 table{width:100%;border-collapse:collapse;margin-top:20px}
+
 td{padding:8px;border:1px solid #000}
+
 .section{margin-top:20px}
+
 </style>
+
 </head>
+
 <body>
+
 <h2>LEMBAR AUDIT MUTU RADIOLOGI</h2>
 
 <table>
+
 <tr><td>Nama Auditor</td><td>${data.nama}</td></tr>
-<tr><td>Radiografer yang Diaudit</td><td>${data.radiografer || "-"}</td></tr>
+
+<tr><td>Radiografer</td><td>${data.radiografer || "-"}</td></tr>
+
 <tr><td>Unit</td><td>${data.unit}</td></tr>
+
 <tr><td>Tanggal</td><td>${data.tanggal}</td></tr>
+
 <tr><td>Persentase</td><td>${data.persentase}%</td></tr>
+
 <tr><td>Status</td><td>${data.status}</td></tr>
+
 <tr><td>Verifikator</td><td>${data.verifikator}</td></tr>
+
 </table>
 
 <div class="section"><h4>Temuan</h4><p>${data.temuan||"-"}</p></div>
+
 <div class="section"><h4>Tindak Lanjut</h4><p>${data.tindak_lanjut||"-"}</p></div>
+
 <div class="section"><h4>Target</h4><p>${data.target||"-"}</p></div>
 
 <br><br>
+
 <table style="border:none">
+
 <tr>
+
 <td style="border:none;text-align:center">
+
 Auditor<br><br><br>( ${data.nama} )
+
 </td>
+
 <td style="border:none;text-align:center">
+
 Koordinator Radiologi<br><br><br>( ${data.verifikator} )
+
 </td>
+
 </tr>
+
 </table>
 
 <script>
+
 window.print();
+
 window.close();
+
 <\/script>
 
 </body>
+
 </html>
+
 `);
+
 win.document.close();
+
 }
+
 </script>
 
 </body>
