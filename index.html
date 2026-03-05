@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Audit Mutu Radiologi PRO 2.1</title>
+<title>Audit Mutu Radiologi PRO 2.2</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -141,26 +141,38 @@ checklist=`
 document.getElementById("mainContent").innerHTML=`
 <div class="card">
 <h2>Form Audit</h2>
+
 <label>Nama Auditor</label>
 <input type="text" id="nama">
+
+<label>Nama Radiografer yang Diaudit</label>
+<input type="text" id="radiografer">
+
 <label>Unit</label>
 <input type="text" id="unit">
+
 <label>Tanggal</label>
 <input type="date" id="tanggal">
+
 <h4>Checklist</h4>
 ${checklist}
+
 <label>Temuan</label>
 <textarea id="temuan"></textarea>
+
 <label>Tindak Lanjut</label>
 <textarea id="tindak"></textarea>
+
 <label>Target Penyelesaian</label>
 <input type="date" id="target">
+
 <button class="save" onclick="simpanAudit('${jenis}')">Simpan & Verifikasi</button>
 </div>`;
 }
 
 function simpanAudit(jenis){
 let nama=document.getElementById("nama").value;
+let radiografer=document.getElementById("radiografer").value;
 let unit=document.getElementById("unit").value;
 let tanggal=document.getElementById("tanggal").value;
 let temuan=document.getElementById("temuan").value;
@@ -174,8 +186,16 @@ chk.forEach(c=>{if(c.checked)patuh++;});
 let persen=((patuh/total)*100).toFixed(2);
 
 db.ref("audit/"+jenis).push({
-nama,unit,tanggal,total,patuh,persentase:persen,
-temuan,tindak_lanjut:tindak,target,
+nama,
+radiografer,
+unit,
+tanggal,
+total,
+patuh,
+persentase:persen,
+temuan,
+tindak_lanjut:tindak,
+target,
 status:"Tervalidasi",
 verifikator:"Ino Hadiwinata, A.Md.Rad",
 timestamp:Date.now()
@@ -210,7 +230,9 @@ let encoded=encodeURIComponent(JSON.stringify(d));
 list+=`
 <div class="card">
 <b>${jenis.key.toUpperCase()}</b><br>
-${d.nama} - ${d.tanggal}<br>
+Auditor : ${d.nama}<br>
+Radiografer : <b>${d.radiografer || "-"}</b><br>
+Tanggal : ${d.tanggal}<br>
 ${indikator(parseFloat(d.persentase))}<br>
 <button onclick="cetakAudit('${encoded}')">Cetak</button>
 </div>`;
@@ -253,17 +275,21 @@ td{padding:8px;border:1px solid #000}
 </head>
 <body>
 <h2>LEMBAR AUDIT MUTU RADIOLOGI</h2>
+
 <table>
 <tr><td>Nama Auditor</td><td>${data.nama}</td></tr>
+<tr><td>Nama Radiografer</td><td>${data.radiografer || "-"}</td></tr>
 <tr><td>Unit</td><td>${data.unit}</td></tr>
 <tr><td>Tanggal</td><td>${data.tanggal}</td></tr>
 <tr><td>Persentase</td><td>${data.persentase}%</td></tr>
 <tr><td>Status</td><td>${data.status}</td></tr>
 <tr><td>Verifikator</td><td>${data.verifikator}</td></tr>
 </table>
+
 <div class="section"><h4>Temuan</h4><p>${data.temuan||"-"}</p></div>
 <div class="section"><h4>Tindak Lanjut</h4><p>${data.tindak_lanjut||"-"}</p></div>
 <div class="section"><h4>Target</h4><p>${data.target||"-"}</p></div>
+
 <br><br>
 <table style="border:none">
 <tr>
@@ -275,10 +301,12 @@ Koordinator Radiologi<br><br><br>( ${data.verifikator} )
 </td>
 </tr>
 </table>
+
 <script>
 window.print();
 window.close();
 <\/script>
+
 </body>
 </html>
 `);
