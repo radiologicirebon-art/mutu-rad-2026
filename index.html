@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Audit Mutu Radiologi PRO 2.2</title>
+<title>Audit Mutu Radiologi PRO 2.3</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -142,10 +142,10 @@ document.getElementById("mainContent").innerHTML=`
 <div class="card">
 <h2>Form Audit</h2>
 
-<label>Nama Auditor</label>
+<label>Nama Auditor (Petugas Audit)</label>
 <input type="text" id="nama">
 
-<label>Nama Radiografer yang Diaudit</label>
+<label>Nama Radiografer yang Diaudit (Pelaksana)</label>
 <input type="text" id="radiografer">
 
 <label>Unit</label>
@@ -230,9 +230,9 @@ let encoded=encodeURIComponent(JSON.stringify(d));
 list+=`
 <div class="card">
 <b>${jenis.key.toUpperCase()}</b><br>
-Auditor : ${d.nama}<br>
-Radiografer : <b>${d.radiografer || "-"}</b><br>
-Tanggal : ${d.tanggal}<br>
+👤 Auditor : ${d.nama}<br>
+🎯 Radiografer : <b>${d.radiografer || "-"}</b><br>
+📅 Tanggal : ${d.tanggal}<br>
 ${indikator(parseFloat(d.persentase))}<br>
 <button onclick="cetakAudit('${encoded}')">Cetak</button>
 </div>`;
@@ -278,7 +278,7 @@ td{padding:8px;border:1px solid #000}
 
 <table>
 <tr><td>Nama Auditor</td><td>${data.nama}</td></tr>
-<tr><td>Nama Radiografer</td><td>${data.radiografer || "-"}</td></tr>
+<tr><td>Radiografer yang Diaudit</td><td>${data.radiografer || "-"}</td></tr>
 <tr><td>Unit</td><td>${data.unit}</td></tr>
 <tr><td>Tanggal</td><td>${data.tanggal}</td></tr>
 <tr><td>Persentase</td><td>${data.persentase}%</td></tr>
